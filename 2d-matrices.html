@@ -30,6 +30,8 @@ uniform vec2 u_resolution;
 uniform mat3 u_matrix;
 
 void main() {
+
+
   // Multiply the position by the matrix.
   vec2 position = (u_matrix * vec3(a_position, 1)).xy;
 
@@ -43,6 +45,9 @@ void main() {
   vec2 clipSpace = zeroToTwo - 1.0;
 
   gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+
+  // if using m3.projection: replace by single line
+  // gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
 }
 </script>
 <!-- fragment shader -->
@@ -167,6 +172,36 @@ function main() {
     var rotationMatrix = m3.rotation(angleInRadians);
     var scaleMatrix = m3.scaling(scale[0], scale[1]);
 
+/* 
+    Alternative: rotate about center of F, not top
+
+    //make a matrix that will move the origin of the 'F' to its center.
+    var moveOriginMatrix = m3.translation(-50, -75);
+
+    //Multiply the matrices.
+    var matrix = m3.multiply(translationMatrix, rotationMatrix);
+    matrix = m3.multiply(matrix, scaleMatrix);
+    matrix = m3.multiply(matrix, moveOriginMatrix);
+    gl.uniformMatrix3fv(matrixLocation, false, matrix);
+
+    //Draw the geometry.
+    var primitiveType = gl.TRIANGLES;
+    var offset = 0;
+    var count = 18;  // 6 triangles in the 'F', 3 points per triangle
+    gl.drawArrays(primitiveType, offset, count);
+ */
+/* 
+  Alternative: 
+  // Compute the matrices
+  var projectionMatrix = m3.projection(
+    gl.canvas.clientWidth, gl.canvas.clientHeight);
+  // ...
+  // Multiply the matrices.
+  var matrix = m3.multiply(projectionMatrix, translationMatrix);
+  matrix = m3.multiply(matrix, rotationMatrix);
+  matrix = m3.multiply(matrix, scaleMatrix);
+
+ */
     // Starting Matrix.
     var matrix = m3.identity();
 
@@ -184,7 +219,7 @@ function main() {
       var offset = 0;
       var count = 18;  // 6 triangles in the 'F', 3 points per triangle
       gl.drawArrays(primitiveType, offset, count);
-    }
+    } 
   }
 }
 
@@ -222,6 +257,16 @@ var m3 = {
       0, 0, 1,
     ];
   },
+
+  projection: function(width, height) {
+    // convert from pixels to clip space
+    // i.e. to scale by 1.0/resolution, 2.0, translate by -1.0,-1.0 and scale Y by -1 
+    // Note: This matrix flips the Y axis so that 0 is at the top.
+    return [
+      2 / width, 0, 0,
+      0, -2 / height, 0,
+      -1, 1, 1
+    ];
 
   multiply: function(a, b) {
     var a00 = a[0 * 3 + 0];
